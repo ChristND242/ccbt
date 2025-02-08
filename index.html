@@ -361,10 +361,13 @@
         addUserMessage(userInput);
         document.getElementById('user-input').value = '';
 
+        // Define the proxy URL and worker URL
+        const proxyUrl = "https://cors-anywhere.herokuapp.com/";
         const workerUrl = "https://ccnbot.christndzila400.workers.dev/chat";
+        const fullUrl = proxyUrl + workerUrl;
 
         try {
-            const response = await fetch(workerUrl, {
+            const response = await fetch(fullUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
