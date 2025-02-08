@@ -284,6 +284,7 @@
 
 <script>
     // Elements
+    // Elements
     const chatIcon = document.getElementById('chat-icon');
     const chatContainer = document.getElementById('chat-container');
     const popupMessage = document.getElementById('popup-message');
@@ -321,38 +322,12 @@
         setTimeout(() => { closePopup(); }, 30000);
     };
 
-    // Format JSON for display
-    function formatJSON(jsonString) {
-        try {
-            const json = JSON.parse(jsonString);
-            return `<pre class="json-block">${JSON.stringify(json, null, 2)}</pre>`;
-        } catch (error) {
-            return jsonString; // Return as-is if it's not valid JSON
-        }
-    }
-
-    // Convert Markdown to HTML (basic support for bold, italics, and code blocks)
-    function formatMarkdown(text) {
-        return text
-            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // Bold (**text**)
-            .replace(/\*(.*?)\*/g, "<em>$1</em>") // Italics (*text*)
-            .replace(/`(.*?)`/g, "<code>$1</code>") // Inline code (`code`)
-            .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>"); // Code block (```code```)
-    }
-
-    // Add Bot Message with Formatting
+    // Add Bot Message
     function addBotMessage(message) {
         const chatBox = document.getElementById('chat-box');
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('bot-message');
-
-        // Format JSON or Markdown
-        if (message.startsWith('{') || message.startsWith('[')) {
-            messageDiv.innerHTML = `<strong>CCN_Bot:</strong> ${formatJSON(message)}`;
-        } else {
-            messageDiv.innerHTML = `<strong>CCN_Bot:</strong> ${formatMarkdown(message)}`;
-        }
-
+        messageDiv.innerHTML = `<strong>CCN_Bot:</strong> ${message}`;
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -368,36 +343,52 @@
     }
 
     // Send Message Function
-    function sendMessage() {
-        const userInput = document.getElementById('user-input').value;
+    async function sendMessage() {
+        const userInput = document.getElementById('user-input').value.trim();
         if (!userInput) return;
 
         addUserMessage(userInput);
         document.getElementById('user-input').value = '';
 
-        const workerUrl = "https://ccnbot.christndzila400.workers.dev/chat";
+        const workerUrl = "https://cors-anywhere.herokuapp.com/https://ccnbot.christndzila400.workers.dev/chat";
 
-        fetch(workerUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: userInput })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (data.response) {
+        try {
+            const response = await fetch(workerUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ message: userInput })
+            });
+
+            // Handle non-200 responses
+            if (!response.ok) {
+                throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
+            }
+
+            // Ensure response is valid JSON
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error("Invalid JSON response:", jsonError);
+                addBotMessage("⚠️ Error: Invalid response from server.");
+                return;
+            }
+
+            // Display bot response
+            if (data && data.response) {
                 addBotMessage(data.response);
             } else {
-                addBotMessage("Sorry, I couldn't understand that.");
+                addBotMessage("⚠️ Sorry, I couldn't understand that.");
             }
-        })
-        .catch(error => {
-            console.error("Error communicating with backend:", error);
-            addBotMessage("An error occurred while processing your request.");
-        });
+        } catch (error) {
+            console.error("Fetch Error:", error);
+            addBotMessage("⚠️ Network error. Please try again.");
+        }
     }
+
 </script>
 
 </body>
