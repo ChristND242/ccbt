@@ -284,7 +284,6 @@
 
 <script>
     // Elements
-    // Elements
     const chatIcon = document.getElementById('chat-icon');
     const chatContainer = document.getElementById('chat-container');
     const popupMessage = document.getElementById('popup-message');
@@ -317,27 +316,32 @@
     chatIcon.addEventListener('click', toggleChat);
 
     // Initial Setup
+    let popupTimeout, closeTimeout; // Declare timers globally for cleanup
     window.onload = () => {
-        setTimeout(() => { popupMessage.classList.add('show'); }, 1300);
-        setTimeout(() => { closePopup(); }, 30000);
+        popupTimeout = setTimeout(() => { popupMessage.classList.add('show'); }, 1300);
+        closeTimeout = setTimeout(() => { closePopup(); }, 30000);
+    };
+
+    // Cleanup timers on page unload
+    window.onunload = () => {
+        clearTimeout(popupTimeout);
+        clearTimeout(closeTimeout);
     };
 
     // Add Bot Message
     function addBotMessage(message) {
-        const chatBox = document.getElementById('chat-box');
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('bot-message');
-        messageDiv.innerHTML = `<strong>CCN_Bot:</strong> ${message}`;
+        messageDiv.textContent = `CCN_Bot: ${message}`; // Use textContent for security
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     // Add User Message
     function addUserMessage(message) {
-        const chatBox = document.getElementById('chat-box');
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('user-message');
-        messageDiv.innerHTML = `${message}`;
+        messageDiv.textContent = message; // Use textContent for security
         chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -345,21 +349,28 @@
     // Send Message Function
     async function sendMessage() {
         const userInput = document.getElementById('user-input').value.trim();
-        if (!userInput) return;
+        const MAX_MESSAGE_LENGTH = 500;
 
+        // Validate user input
+        if (!userInput || userInput.length > MAX_MESSAGE_LENGTH) {
+            addBotMessage("⚠️ Please enter a valid message (max 500 characters).");
+            return;
+        }
+
+        // Add user message to chat
         addUserMessage(userInput);
         document.getElementById('user-input').value = '';
 
-        const workerUrl = "https://cors-anywhere.herokuapp.com/https://ccnbot.christndzila400.workers.dev/chat";
+        const workerUrl = "https://ccnbot.christndzila400.workers.dev/chat";
 
         try {
             const response = await fetch(workerUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
                 },
-                body: JSON.stringify({ message: userInput })
+                body: JSON.stringify({ message: userInput }),
             });
 
             // Handle non-200 responses
@@ -367,7 +378,7 @@
                 throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
             }
 
-            // Ensure response is valid JSON
+            // Parse response as JSON
             let data;
             try {
                 data = await response.json();
@@ -380,6 +391,8 @@
             // Display bot response
             if (data && data.response) {
                 addBotMessage(data.response);
+            } else if (data && data.error) {
+                addBotMessage(`⚠️ Error: ${data.error}`);
             } else {
                 addBotMessage("⚠️ Sorry, I couldn't understand that.");
             }
@@ -388,7 +401,6 @@
             addBotMessage("⚠️ Network error. Please try again.");
         }
     }
-
 </script>
 
 </body>
